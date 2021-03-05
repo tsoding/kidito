@@ -1,3 +1,8 @@
 # OpenGL Template
 
-Just a simple OpenGL template that I use on my streams.
+## Objectives
+
+- [x] Generate cube mesh
+- [ ] Render the cube mesh with perspective projection
+- [ ] Texture the cube
+- [ ] Simple lighting
