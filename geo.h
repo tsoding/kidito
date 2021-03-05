@@ -31,10 +31,19 @@ typedef struct {
     V4 vs[TRI_VERTICES];
 } Tri;
 
-void tri_translate(Tri *tri, V4 dir);
+void generate_cube_face_mesh(size_t a, size_t b,
+                             size_t c, float cv,
+                             size_t d, float dv,
+                             Tri mesh[TRIS_PER_FACE]);
+void generate_cube_mesh(Tri cube[TRIS_PER_CUBE]);
 
-void cube_face(size_t a, size_t b, size_t c, float cv,
-               Tri mesh[TRIS_PER_FACE]);
-void cube(Tri cube[TRIS_PER_CUBE]);
+typedef struct {
+    float vs[4][4];
+} Mat4x4;
+
+Mat4x4 rotation_mat4x4_y(float angle);
+Mat4x4 rotation_mat4x4_z(float angle);
+Mat4x4 standard_perspective(float fovy, float a, float n, float f);
+
 
 #endif // GEO_H_

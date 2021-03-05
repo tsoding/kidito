@@ -11,6 +11,11 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GLFW/glfw3.h>
 
+#include "./geo.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "./stb_image.h"
+
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 768
 
@@ -198,6 +203,35 @@ void window_size_callback(GLFWwindow* window, int width, int height)
         SCREEN_HEIGHT);
 }
 
+GLuint buffer_from_mesh(Tri *mesh, size_t mesh_count)
+{
+    GLuint buffer_id;
+    glGenBuffers(1, &buffer_id);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer_id);
+    glBufferData(GL_ARRAY_BUFFER,
+                 sizeof(Tri) * mesh_count,
+                 mesh,
+                 GL_STATIC_DRAW);
+    return buffer_id;
+}
+
+void MessageCallback(GLenum source,
+                     GLenum type,
+                     GLuint id,
+                     GLenum severity,
+                     GLsizei length,
+                     const GLchar* message,
+                     const void* userParam)
+{
+    (void) source;
+    (void) id;
+    (void) length;
+    (void) userParam;
+    fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+            (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+            type, severity, message);
+}
+
 int main()
 {
     if (!glfwInit()) {
@@ -224,16 +258,76 @@ int main()
         exit(1);
     }
 
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(MessageCallback, 0);
+
+#define TEXTURE_FILE_PATH "pog.png"
+    int w, h;
+    uint32_t *pixels = (uint32_t*) stbi_load(TEXTURE_FILE_PATH, &w, &h, NULL, 4);
+    if (pixels == NULL) {
+        fprintf(stderr, "ERROR: could not load file `"TEXTURE_FILE_PATH"`: %s\n",
+                strerror(errno));
+        exit(1);
+    }
+
+    GLuint texture_id = 0;
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGBA,
+                 w,
+                 h,
+                 0,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 pixels);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+
     init_failed_program();
     reload_shaders();
+
+    Tri cube_mesh[TRIS_PER_CUBE] = {0};
+    generate_cube_mesh(cube_mesh);
+    buffer_from_mesh(cube_mesh, TRIS_PER_CUBE);
+
+    GLuint u_matrix = glGetUniformLocation(program, "matrix");
+
+    {
+        const GLint position = 1;
+        glEnableVertexAttribArray(position);
+
+        glVertexAttribPointer(
+            position,           // index
+            V4_COMPS,           // numComponents
+            GL_FLOAT,           // type
+            0,                  // normalized
+            0,                  // stride
+            0                   // offset
+        );
+    }
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
 
+    float angle = 0.0f;
     while (!glfwWindowShouldClose(window)) {
+        angle += 0.01f;
+        Mat4x4 matrix = rotation_mat4x4_y(angle);
+        glUniformMatrix4fv(u_matrix, 1, GL_TRUE, (void*) &matrix);
+
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glDrawArrays(GL_QUADS, 0, 4);
+        glDrawArrays(GL_TRIANGLES, 0, TRIS_PER_CUBE * TRI_VERTICES);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
