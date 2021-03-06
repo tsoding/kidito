@@ -263,11 +263,11 @@ int main()
 
     Tri cube_mesh[TRIS_PER_CUBE] = {0};
     RGBA cube_colors[TRIS_PER_CUBE][TRI_VERTICES] = {0};
-    generate_cube_mesh(cube_mesh, cube_colors);
+    V2 cube_uvs[TRIS_PER_CUBE][TRI_VERTICES] = {0};
+    generate_cube_mesh(cube_mesh, cube_colors, cube_uvs);
 
     {
-        GLuint cube_mesh_buffer_id =
-            array_buffer_from_data(cube_mesh, sizeof(cube_mesh));
+        array_buffer_from_data(cube_mesh, sizeof(cube_mesh));
 
         const GLint position = 1;
         glEnableVertexAttribArray(position);
@@ -283,8 +283,7 @@ int main()
     }
 
     {
-        GLuint cube_colors_buffer_id =
-            array_buffer_from_data(cube_colors, sizeof(cube_colors));
+        array_buffer_from_data(cube_colors, sizeof(cube_colors));
 
         const GLint position = 2;
         glEnableVertexAttribArray(position);
@@ -292,6 +291,22 @@ int main()
         glVertexAttribPointer(
             position,           // index
             RGBA_COMPS,         // numComponents
+            GL_FLOAT,           // type
+            0,                  // normalized
+            0,                  // stride
+            0                   // offset
+        );
+    }
+
+    {
+        array_buffer_from_data(cube_uvs, sizeof(cube_uvs));
+
+        const GLint position = 3;
+        glEnableVertexAttribArray(position);
+
+        glVertexAttribPointer(
+            position,           // index
+            V2_COMPS,           // numComponents
             GL_FLOAT,           // type
             0,                  // normalized
             0,                  // stride

@@ -8,6 +8,15 @@
 #define Z 2
 #define W 3
 
+#define V2_COMPS 2
+
+typedef struct {
+    float cs[V2_COMPS];
+} V2;
+
+#define V2_Fmt "V2(%f, %f, %f, %f)"
+#define V2_Arg(v2) v2.cs[X], v2.cs[Y]
+
 #define V3_COMPS 3
 #define V4_COMPS 4
 #define PAIR_COMPS 2
@@ -38,7 +47,8 @@ void generate_cube_face_mesh(size_t a, size_t b,
                              size_t d, float dv,
                              Tri mesh[TRIS_PER_FACE]);
 void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
-                        RGBA colors[TRIS_PER_CUBE][TRI_VERTICES]);
+                        RGBA colors[TRIS_PER_CUBE][TRI_VERTICES],
+                        V2 uvs[TRIS_PER_CUBE][TRI_VERTICES]);
 
 typedef struct {
     float vs[4][4];

@@ -7,6 +7,7 @@ uniform float time;
 
 layout(location = 1) in vec4 vertex_position;
 layout(location = 2) in vec4 vertex_color;
+layout(location = 3) in vec2 vertex_uv;
 
 out vec2 uv;
 out vec4 color;
@@ -33,6 +34,6 @@ void main(void)
 
     // Output
     gl_Position = pos;
-    uv = pos.xy;
+    uv = vertex_uv;
     color = vertex_color;
 }
