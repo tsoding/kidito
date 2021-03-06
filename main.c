@@ -113,6 +113,7 @@ bool link_program(GLuint vert_shader, GLuint frag_shader, GLuint *program)
 
 bool program_failed = false;
 GLuint program = 0;
+GLint time_location = 0;
 
 void reload_shaders(void)
 {
@@ -140,6 +141,7 @@ void reload_shaders(void)
     }
 
     glUseProgram(program);
+    time_location = glGetUniformLocation(program, "time");
 
     printf("Successfully Reload the Shaders\n");
 }
@@ -261,8 +263,6 @@ int main()
     generate_cube_mesh(cube_mesh);
     buffer_from_mesh(cube_mesh, TRIS_PER_CUBE);
 
-    GLuint u_matrix = glGetUniformLocation(program, "matrix");
-
     {
         const GLint position = 1;
         glEnableVertexAttribArray(position);
@@ -280,11 +280,8 @@ int main()
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
 
-    float angle = 0.0f;
     while (!glfwWindowShouldClose(window)) {
-        angle += 0.01f;
-        Mat4x4 matrix = rotation_mat4x4_y(angle);
-        glUniformMatrix4fv(u_matrix, 1, GL_TRUE, (void*) &matrix);
+        glUniform1f(time_location, glfwGetTime());
 
         glClear(GL_COLOR_BUFFER_BIT);
 

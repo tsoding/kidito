@@ -3,6 +3,7 @@
 precision mediump float;
 
 uniform mat4 matrix;
+uniform float time;
 
 layout(location = 1) in vec4 position;
 
@@ -12,9 +13,23 @@ out vec2 uv;
 
 void main(void)
 {
-    vec4 position = (matrix * ((position + MESH_FIXUP) / vec4(2.0, 2.0, 2.0, 1.0))) + vec4(0.0, 0.0, 1.0, 0.0);
-    gl_Position = vec4(position.x / position.z, position.y / position.z, position.z, position.w);
+    vec4 pos = (position + MESH_FIXUP) * vec4(0.75, 0.75, 0.75, 1.0);
 
-    vec4 tuv = (matrix * position);
-    uv = tuv.xy;
+    // Rotation
+    float a = time;
+    float px = pos.x * cos(a) - pos.z * sin(a);
+    float pz = pos.x * sin(a) + pos.z * cos(a);
+    pos.x = px;
+    pos.z = pz;
+
+    // Translate
+    pos.z += 1.0;
+
+    // Projection
+    pos.x /= pos.z;
+    pos.y /= pos.z;
+
+    // Output
+    gl_Position = pos;
+    uv = pos.xy;
 }

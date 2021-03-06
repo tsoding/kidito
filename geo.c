@@ -97,17 +97,3 @@ Mat4x4 rotation_mat4x4_z(float angle)
         }
     };
 }
-
-// https://en.wikibooks.org/wiki/GLSL_Programming/Vertex_Transformations#Projection_Transformation_and_Perspective_Division
-Mat4x4 standard_perspective(float fovy, float a, float n, float f)
-{
-    const float d = 1.0f / tanf(fovy * 0.5f);
-    return (Mat4x4) {
-        .vs = {
-            {d / a, 0.0f, 0.0f, 0.0f},
-            { 0.0f,    d, 0.0f, 0.0f},
-            { 0.0f, 0.0f, (n + f) / (n - f), (2.0f * n * f) / (n - f)},
-            { 0.0f, 0.0f, -1.0f, 0.0f},
-        },
-    };
-}

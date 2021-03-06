@@ -43,7 +43,6 @@ typedef struct {
 
 Mat4x4 rotation_mat4x4_y(float angle);
 Mat4x4 rotation_mat4x4_z(float angle);
-Mat4x4 standard_perspective(float fovy, float a, float n, float f);
 
 
 #endif // GEO_H_
