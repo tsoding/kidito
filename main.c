@@ -18,6 +18,7 @@
 
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 768
+#define MANUAL_TIME_STEP 0.05f
 
 void panic_errno(const char *fmt, ...)
 {
@@ -114,6 +115,7 @@ bool link_program(GLuint vert_shader, GLuint frag_shader, GLuint *program)
 // Global variables (fragile people with CS degree look away)
 bool program_failed = false;
 GLuint program = 0;
+double time = 0.0;
 GLint time_location = 0;
 bool pause = false;
 
@@ -160,6 +162,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             reload_shaders();
         } else if (key == GLFW_KEY_SPACE) {
             pause = !pause;
+        }
+
+        if (pause) {
+            if (key == GLFW_KEY_LEFT) {
+                time -= MANUAL_TIME_STEP;
+            } else if (key == GLFW_KEY_RIGHT) {
+                time += MANUAL_TIME_STEP;
+            }
         }
     }
 }
@@ -322,7 +332,6 @@ int main()
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
-    double time = 0.0;
     double prev_time = 0.0;
     while (!glfwWindowShouldClose(window)) {
         glUniform1f(time_location, time);
