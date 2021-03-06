@@ -44,7 +44,7 @@ void generate_cube_face_mesh(size_t a, size_t b,
 }
 
 void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
-                        RGBA colors[TRIS_PER_CUBE * TRI_VERTICES])
+                        RGBA colors[TRIS_PER_CUBE][TRI_VERTICES])
 {
     size_t count = 0;
 
@@ -77,9 +77,9 @@ void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
             for (size_t k = 0; k < TRIS_PER_FACE; ++k) {
                 mesh[count] = face_mesh[k];
                 for (size_t q = 0; q < TRI_VERTICES; ++q) {
-                    colors[count * TRI_VERTICES + q] = face_colors[2 * i + j];
-                    colors[count * TRI_VERTICES + q] = face_colors[2 * i + j];
-                    colors[count * TRI_VERTICES + q] = face_colors[2 * i + j];
+                    colors[count][q] = face_colors[2 * i + j];
+                    colors[count][q] = face_colors[2 * i + j];
+                    colors[count][q] = face_colors[2 * i + j];
                 }
                 count += 1;
             }

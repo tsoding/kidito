@@ -38,7 +38,7 @@ void generate_cube_face_mesh(size_t a, size_t b,
                              size_t d, float dv,
                              Tri mesh[TRIS_PER_FACE]);
 void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
-                        RGBA colors[TRIS_PER_CUBE * TRI_VERTICES]);
+                        RGBA colors[TRIS_PER_CUBE][TRI_VERTICES]);
 
 typedef struct {
     float vs[4][4];

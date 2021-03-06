@@ -262,7 +262,7 @@ int main()
     reload_shaders();
 
     Tri cube_mesh[TRIS_PER_CUBE] = {0};
-    RGBA cube_colors[TRIS_PER_CUBE * TRI_VERTICES] = {0};
+    RGBA cube_colors[TRIS_PER_CUBE][TRI_VERTICES] = {0};
     generate_cube_mesh(cube_mesh, cube_colors);
 
     {
