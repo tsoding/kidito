@@ -111,9 +111,11 @@ bool link_program(GLuint vert_shader, GLuint frag_shader, GLuint *program)
     return program;
 }
 
+// Global variables (fragile people with CS degree look away)
 bool program_failed = false;
 GLuint program = 0;
 GLint time_location = 0;
+bool pause = false;
 
 void reload_shaders(void)
 {
@@ -153,8 +155,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     (void) action;
     (void) mods;
 
-    if (key == GLFW_KEY_F5 && action == GLFW_PRESS) {
-        reload_shaders();
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_F5) {
+            reload_shaders();
+        } else if (key == GLFW_KEY_SPACE) {
+            pause = !pause;
+        }
     }
 }
 
@@ -316,9 +322,10 @@ int main()
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
-
+    double time = 0.0;
+    double prev_time = 0.0;
     while (!glfwWindowShouldClose(window)) {
-        glUniform1f(time_location, glfwGetTime());
+        glUniform1f(time_location, time);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -328,6 +335,11 @@ int main()
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+        double cur_time = glfwGetTime();
+        if (!pause) {
+            time += cur_time - prev_time;
+        }
+        prev_time = cur_time;
     }
 
     return 0;
