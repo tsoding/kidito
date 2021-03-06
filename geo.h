@@ -1,6 +1,8 @@
 #ifndef GEO_H_
 #define GEO_H_
 
+#include "./rgba.h"
+
 #define X 0
 #define Y 1
 #define Z 2
@@ -35,7 +37,8 @@ void generate_cube_face_mesh(size_t a, size_t b,
                              size_t c, float cv,
                              size_t d, float dv,
                              Tri mesh[TRIS_PER_FACE]);
-void generate_cube_mesh(Tri cube[TRIS_PER_CUBE]);
+void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
+                        RGBA colors[TRIS_PER_CUBE * TRI_VERTICES]);
 
 typedef struct {
     float vs[4][4];

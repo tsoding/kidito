@@ -43,13 +43,23 @@ void generate_cube_face_mesh(size_t a, size_t b,
     }
 }
 
-void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE])
+void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
+                        RGBA colors[TRIS_PER_CUBE * TRI_VERTICES])
 {
     size_t count = 0;
 
     Tri face_mesh[TRIS_PER_FACE] = {0};
 
-    size_t face_pairs[CUBE_FACE_PAIRS][V4_COMPS] = {
+    static const RGBA face_colors[CUBE_FACES] = {
+        RED,
+        GREEN,
+        BLUE,
+        YELLOW,
+        PURPLE,
+        CYAN
+    };
+
+    static const size_t face_pairs[CUBE_FACE_PAIRS][V4_COMPS] = {
         {X, Y, Z, W},
         {Z, Y, X, W},
         {X, Z, Y, W}
@@ -65,7 +75,13 @@ void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE])
                 face_mesh);
 
             for (size_t k = 0; k < TRIS_PER_FACE; ++k) {
-                mesh[count++] = face_mesh[k];
+                mesh[count] = face_mesh[k];
+                for (size_t q = 0; q < TRI_VERTICES; ++q) {
+                    colors[count * TRI_VERTICES + q] = face_colors[2 * i + j];
+                    colors[count * TRI_VERTICES + q] = face_colors[2 * i + j];
+                    colors[count * TRI_VERTICES + q] = face_colors[2 * i + j];
+                }
+                count += 1;
             }
         }
     }

@@ -5,15 +5,17 @@ precision mediump float;
 uniform mat4 matrix;
 uniform float time;
 
-layout(location = 1) in vec4 position;
+layout(location = 1) in vec4 vertex_position;
+layout(location = 2) in vec4 vertex_color;
 
 out vec2 uv;
+out vec4 color;
 
 #define MESH_FIXUP vec4(-0.5, -0.5, -0.5, 0.0)
 
 void main(void)
 {
-    vec4 pos = (position + MESH_FIXUP) * vec4(0.75, 0.75, 0.75, 1.0);
+    vec4 pos = (vertex_position + MESH_FIXUP) * vec4(0.75, 0.75, 0.75, 1.0);
 
     // Rotation
     float a = time;
@@ -32,4 +34,5 @@ void main(void)
     // Output
     gl_Position = pos;
     uv = pos.xy;
+    color = vertex_color;
 }

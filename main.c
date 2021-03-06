@@ -168,14 +168,14 @@ void window_size_callback(GLFWwindow* window, int width, int height)
         SCREEN_HEIGHT);
 }
 
-GLuint buffer_from_mesh(Tri *mesh, size_t mesh_count)
+GLuint array_buffer_from_data(void *data, size_t data_size)
 {
     GLuint buffer_id;
     glGenBuffers(1, &buffer_id);
     glBindBuffer(GL_ARRAY_BUFFER, buffer_id);
     glBufferData(GL_ARRAY_BUFFER,
-                 sizeof(Tri) * mesh_count,
-                 mesh,
+                 data_size,
+                 data,
                  GL_STATIC_DRAW);
     return buffer_id;
 }
@@ -227,6 +227,8 @@ int main()
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(MessageCallback, 0);
 
+    glEnable(GL_DEPTH_TEST);
+
 #define TEXTURE_FILE_PATH "pog.png"
     int w, h;
     uint32_t *pixels = (uint32_t*) stbi_load(TEXTURE_FILE_PATH, &w, &h, NULL, 4);
@@ -260,10 +262,13 @@ int main()
     reload_shaders();
 
     Tri cube_mesh[TRIS_PER_CUBE] = {0};
-    generate_cube_mesh(cube_mesh);
-    buffer_from_mesh(cube_mesh, TRIS_PER_CUBE);
+    RGBA cube_colors[TRIS_PER_CUBE * TRI_VERTICES] = {0};
+    generate_cube_mesh(cube_mesh, cube_colors);
 
     {
+        GLuint cube_mesh_buffer_id =
+            array_buffer_from_data(cube_mesh, sizeof(cube_mesh));
+
         const GLint position = 1;
         glEnableVertexAttribArray(position);
 
@@ -277,13 +282,30 @@ int main()
         );
     }
 
+    {
+        GLuint cube_colors_buffer_id =
+            array_buffer_from_data(cube_colors, sizeof(cube_colors));
+
+        const GLint position = 2;
+        glEnableVertexAttribArray(position);
+
+        glVertexAttribPointer(
+            position,           // index
+            RGBA_COMPS,         // numComponents
+            GL_FLOAT,           // type
+            0,                  // normalized
+            0,                  // stride
+            0                   // offset
+        );
+    }
+
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
 
     while (!glfwWindowShouldClose(window)) {
         glUniform1f(time_location, glfwGetTime());
 
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (!program_failed) {
             glDrawArrays(GL_TRIANGLES, 0, TRIS_PER_CUBE * TRI_VERTICES);
