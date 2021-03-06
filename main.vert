@@ -19,10 +19,10 @@ void main(void)
     vec4 pos = (vertex_position + MESH_FIXUP) * vec4(0.75, 0.75, 0.75, 1.0);
 
     // Rotation
-    float px = pos.x * cos(time) - pos.z * sin(time);
-    float pz = pos.x * sin(time) + pos.z * cos(time);
-    pos.x = px;
+    float pz = pos.z * cos(time) - pos.y * sin(time);
+    float py = pos.z * sin(time) + pos.y * cos(time);
     pos.z = pz;
+    pos.y = py;
 
     // Translate
     pos.z += 1.0;

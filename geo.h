@@ -14,7 +14,7 @@ typedef struct {
     float cs[V2_COMPS];
 } V2;
 
-#define V2_Fmt "V2(%f, %f, %f, %f)"
+#define V2_Fmt "V2(%f, %f)"
 #define V2_Arg(v2) v2.cs[X], v2.cs[Y]
 
 #define V3_COMPS 3
