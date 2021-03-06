@@ -220,12 +220,13 @@ int main()
         exit(1);
     }
 
-    GLFWwindow * const window = glfwCreateWindow(
-                                    SCREEN_WIDTH,
-                                    SCREEN_HEIGHT,
-                                    "atomato",
-                                    NULL,
-                                    NULL);
+    GLFWwindow * const window =
+        glfwCreateWindow(
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+            "atomato",
+            NULL,
+            NULL);
     if (window == NULL) {
         fprintf(stderr, "ERROR: could not create a window.\n");
         glfwTerminate();
@@ -245,7 +246,8 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
-#define TEXTURE_FILE_PATH "pog.png"
+// #define TEXTURE_FILE_PATH "pog.png"
+#define TEXTURE_FILE_PATH "tsodinFlushed.png"
     int w, h;
     uint32_t *pixels = (uint32_t*) stbi_load(TEXTURE_FILE_PATH, &w, &h, NULL, 4);
     if (pixels == NULL) {
