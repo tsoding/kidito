@@ -20,30 +20,23 @@ V4 v4_scale(V4 a, float s)
     return a;
 }
 
-void tri_translate(Tri *tri, V4 dir)
-{
-    for (size_t i = 0; i < TRI_VERTICES; ++i) {
-        tri->vs[i] = v4_add(tri->vs[i], dir);
-    }
-
-}
 void generate_cube_face_mesh(size_t a, size_t b,
                              size_t c, float cv,
                              size_t d, float dv,
-                             Tri mesh[TRIS_PER_FACE])
+                             V4 mesh[TRIS_PER_FACE][TRI_VERTICES])
 {
     for (size_t i = 0; i < TRIS_PER_FACE; ++i) {
         for (size_t j = 0; j < TRI_VERTICES; ++j) {
             size_t k = i + j;
-            mesh[i].vs[j].cs[a] = (float) (k & 1);
-            mesh[i].vs[j].cs[b] = (float) (k >> 1);
-            mesh[i].vs[j].cs[c] = cv;
-            mesh[i].vs[j].cs[d] = dv;
+            mesh[i][j].cs[a] = (float) (k & 1);
+            mesh[i][j].cs[b] = (float) (k >> 1);
+            mesh[i][j].cs[c] = cv;
+            mesh[i][j].cs[d] = dv;
         }
     }
 }
 
-void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
+void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
                         RGBA colors[TRIS_PER_CUBE][TRI_VERTICES],
                         V2 uvs[TRIS_PER_CUBE][TRI_VERTICES])
 {

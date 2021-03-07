@@ -38,15 +38,11 @@ V4 v4_scale(V4 a, float s);
 #define TRIS_PER_FACE 2
 #define TRIS_PER_CUBE (CUBE_FACES * TRIS_PER_FACE)
 
-typedef struct {
-    V4 vs[TRI_VERTICES];
-} Tri;
-
 void generate_cube_face_mesh(size_t a, size_t b,
                              size_t c, float cv,
                              size_t d, float dv,
-                             Tri mesh[TRIS_PER_FACE]);
-void generate_cube_mesh(Tri mesh[TRIS_PER_CUBE],
+                             V4 mesh[TRIS_PER_FACE][TRI_VERTICES]);
+void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
                         RGBA colors[TRIS_PER_CUBE][TRI_VERTICES],
                         V2 uvs[TRIS_PER_CUBE][TRI_VERTICES]);
 
