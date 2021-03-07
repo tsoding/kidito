@@ -83,10 +83,72 @@ void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
     assert(count == TRIS_PER_CUBE);
 }
 
-// https://en.wikipedia.org/wiki/Rotation_matrix
-Mat4x4 rotation_mat4x4_y(float angle)
+Mat4 mat4_id(void)
 {
-    return (Mat4x4) {
+    return (Mat4) {
+        .vs = {
+            {1.0f, 0.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f, 0.0f},
+            {0.0f, 0.0f, 1.0f, 0.0f},
+            {0.0f, 0.0f, 0.0f, 1.0f},
+        },
+    };
+}
+
+V4 mat4_mult_v4(Mat4 mat, V4 vec)
+{
+    V4 result = {0};
+    for (int row = 0; row < V4_COMPS; ++row) {
+        for (int col = 0; col < V4_COMPS; ++col) {
+            result.cs[row] += mat.vs[row][col] * vec.cs[col];
+        }
+    }
+    return result;
+}
+
+Mat4 mat4_mult_mat4(Mat4 m1, Mat4 m2)
+{
+    Mat4 result = {0};
+
+    for (int row = 0; row < V4_COMPS; ++row) {
+        for (int col = 0; col < V4_COMPS; ++col) {
+            for (int t = 0; t < V4_COMPS; ++t) {
+                result.vs[row][col] += m1.vs[row][t] * m2.vs[t][col];
+            }
+        }
+    }
+
+    return result;
+}
+
+Mat4 mat4_translate(float x, float y, float z)
+{
+    return (Mat4) {
+        .vs = {
+            {1.0f, 0.0f, 0.0f, x},
+            {0.0f, 1.0f, 0.0f, y},
+            {0.0f, 0.0f, 1.0f, z},
+            {0.0f, 0.0f, 0.0f, 1.0f},
+        }
+    };
+}
+
+Mat4 mat4_scale(float x, float y, float z)
+{
+    return (Mat4) {
+        .vs = {
+            {   x, 0.0f, 0.0f, 0.0f},
+            {0.0f,    y, 0.0f, 0.0f},
+            {0.0f, 0.0f,    z, 0.0f},
+            {0.0f, 0.0f, 0.0f, 1.0f},
+        }
+    };
+}
+
+// https://en.wikipedia.org/wiki/Rotation_matrix
+Mat4 mat4_rotate_y(float angle)
+{
+    return (Mat4) {
         .vs = {
             { cosf(angle), 0.0f, sinf(angle), 0.0f},
             {        0.0f, 1.0f,       0.0f, 0.0f},
@@ -96,9 +158,9 @@ Mat4x4 rotation_mat4x4_y(float angle)
     };
 }
 
-Mat4x4 rotation_mat4x4_z(float angle)
+Mat4 mat4_rotate_z(float angle)
 {
-    return (Mat4x4) {
+    return (Mat4) {
         .vs = {
             {cosf(angle), -sinf(angle), 0.0f, 0.0f},
             {sinf(angle),  cosf(angle), 0.0f, 0.0f},
@@ -106,4 +168,18 @@ Mat4x4 rotation_mat4x4_z(float angle)
             {       0.0f,         0.0f, 0.0f, 1.0f},
         }
     };
+}
+
+// NOTE: stolen from glm::perspectiveRH_NO()
+Mat4 mat4_perspective(float fovy, float aspect, float near, float far)
+{
+    const float tan_half_fovy = tanf(fovy * 0.5f);
+
+    Mat4 result = {0};
+    result.vs[0][0] = 1.0f / (aspect * tan_half_fovy);
+    result.vs[1][1] = 1.0f / tan_half_fovy;
+    result.vs[2][2] = far / (near - far);
+    result.vs[2][3] = -1.0f;
+    result.vs[3][2] = -(far * near) / (far - near);
+    return result;
 }

@@ -3,6 +3,8 @@
 
 #include "./rgba.h"
 
+#define MY_PI 3.14159265359f
+
 #define X 0
 #define Y 1
 #define Z 2
@@ -47,11 +49,17 @@ void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
                         V2 uvs[TRIS_PER_CUBE][TRI_VERTICES]);
 
 typedef struct {
-    float vs[4][4];
-} Mat4x4;
+    float vs[V4_COMPS][V4_COMPS];
+} Mat4;
 
-Mat4x4 rotation_mat4x4_y(float angle);
-Mat4x4 rotation_mat4x4_z(float angle);
+V4 mat4_mult_v4(Mat4 mat, V4 vec);
+Mat4 mat4_mult_mat4(Mat4 m1, Mat4 m2);
 
+Mat4 mat4_id(void);
+Mat4 mat4_translate(float x, float y, float z);
+Mat4 mat4_scale(float x, float y, float z);
+Mat4 mat4_rotate_y(float angle);
+Mat4 mat4_rotate_z(float angle);
+Mat4 mat4_perspective(float fovy, float aspect, float near, float far);
 
 #endif // GEO_H_

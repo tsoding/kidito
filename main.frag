@@ -15,5 +15,5 @@ void main(void) {
     frag_color = mix(
         texture(pog, uv),
         vec4(0.05, 0.0, 0.0, 1.0),
-        0.0/*gl_FragCoord.z*/);
+        0.0f/*gl_FragCoord.z*/);
 }
