@@ -118,7 +118,7 @@ GLuint program = 0;
 double time = 0.0;
 GLint time_location = 0;
 bool pause = false;
-GLint matrix_location = 0;
+GLint resolution_location = 0;
 
 void reload_shaders(void)
 {
@@ -147,7 +147,7 @@ void reload_shaders(void)
 
     glUseProgram(program);
     time_location = glGetUniformLocation(program, "time");
-    matrix_location = glGetUniformLocation(program, "matrix");
+    resolution_location = glGetUniformLocation(program, "resolution");
 
     printf("Successfully Reload the Shaders\n");
 }
@@ -342,30 +342,8 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (!program_failed) {
-            float aspect = (float) SCREEN_WIDTH / (float) SCREEN_HEIGHT;
-            float fovy = 90.0f * MY_PI / 180.0f;
-            Mat4 matrixes[] = {
-                mat4_perspective(fovy, aspect, 1.0, 500.0),
-                mat4_translate(0.0f, 0.0f, -30.0f),
-                mat4_scale(25.0f, 25.0f, 25.0f),
-                mat4_rotate_z(time),
-                mat4_rotate_y(time),
-                mat4_translate(-0.5f, -0.5f, -0.5f),
-            };
-            const size_t matrixes_size = sizeof(matrixes) / sizeof(matrixes[0]);
-
-            Mat4 matrix = mat4_id();
-
-            for (size_t i = 0; i < matrixes_size; ++i) {
-                matrix = mat4_mult_mat4(matrix, matrixes[i]);
-            }
-
-            glUniformMatrix4fv(
-                matrix_location,
-                1,
-                GL_TRUE,
-                (void*)&matrix);
             glUniform1f(time_location, time);
+            glUniform2f(resolution_location, SCREEN_WIDTH, SCREEN_HEIGHT);
             glDrawArrays(GL_TRIANGLES, 0, TRIS_PER_CUBE * TRI_VERTICES);
         }
 
