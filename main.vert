@@ -11,6 +11,7 @@ layout(location = 3) in vec2 vertex_uv;
 
 out vec2 uv;
 out vec4 color;
+out vec4 vertex;
 
 mat4 mat4_translate(vec3 dir)
 {
@@ -77,4 +78,12 @@ void main(void)
 
     color = vertex_color;
     uv = vertex_uv;
+    vertex = (
+        mat4_translate(vec3(0.0, 0.0, -30.0 + 30.0 * sin(time))) *
+        mat4_scale(vec3(25.0, 25.0, 25.0)) *
+        mat4_rotate_z(time) *
+        mat4_rotate_y(time) *
+        mat4_translate(vec3(-0.5, -0.5, -0.5)) *
+        vertex_position
+    );
 }
