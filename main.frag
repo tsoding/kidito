@@ -10,10 +10,10 @@ in vec4 color;
 out vec4 frag_color;
 
 void main(void) {
-    frag_color = vec4(uv, 0.0, 1.0);
     // frag_color = color;
+    // frag_color = vec4(gl_FragCoord.w * 2.0, 0.0, 0.0, 1.0);
     frag_color = mix(
         texture(pog, uv),
-        vec4(0.05, 0.0, 0.0, 1.0),
-        0.0f/*gl_FragCoord.z*/);
+        vec4(0.0, 0.0, 0.0, 1.0),
+        gl_FragCoord.w);
 }

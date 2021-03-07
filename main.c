@@ -248,8 +248,12 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
-#define TEXTURE_FILE_PATH "pog.png"
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+// #define TEXTURE_FILE_PATH "pog.png"
 // #define TEXTURE_FILE_PATH "tsodinFlushed.png"
+#define TEXTURE_FILE_PATH "yep.png"
     int w, h;
     uint32_t *pixels = (uint32_t*) stbi_load(TEXTURE_FILE_PATH, &w, &h, NULL, 4);
     if (pixels == NULL) {
