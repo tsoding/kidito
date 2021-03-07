@@ -5,5 +5,5 @@
 - [x] Generate cube mesh
 - [x] Render the cube mesh with perspective projection
 - [x] Texture the cube
-- [ ] Fog
+- [x] Fog
 - [ ] Simple lighting (the classical one with normals and stuff)
