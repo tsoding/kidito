@@ -64,23 +64,24 @@ void main(void)
     float aspect = resolution.x / resolution.y;
     float fovy = radians(90.0);// + sin(time);
 
-    gl_Position = (
-        mat4_perspective(fovy, aspect, 1.0, 500.0) *
+    mat4 camera = (
         mat4_translate(vec3(0.0, 0.0, -30.0 + 30.0 * sin(time))) *
         mat4_scale(vec3(25.0, 25.0, 25.0)) *
         mat4_rotate_z(time) *
         mat4_rotate_y(time) *
         mat4_translate(vec3(-0.5, -0.5, -0.5)) *
+        mat4(1.0)
+    );
+
+    gl_Position = (
+        mat4_perspective(fovy, aspect, 1.0, 500.0) *
+        camera *
         vertex_position
     );
 
     uv = vertex_uv;
     vertex = (
-        mat4_translate(vec3(0.0, 0.0, -30.0 + 30.0 * sin(time))) *
-        mat4_scale(vec3(25.0, 25.0, 25.0)) *
-        mat4_rotate_z(time) *
-        mat4_rotate_y(time) *
-        mat4_translate(vec3(-0.5, -0.5, -0.5)) *
+        camera *
         vertex_position
     );
 }
