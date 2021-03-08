@@ -30,10 +30,14 @@ void *memory_malloc(size_t size)
     return result;
 }
 
-// TODO: memory_realloc does not handle old_size > new_size
 void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
 {
     void *new_memory = memory_malloc(new_size);
+
+    if (old_size > new_size) {
+        old_size = new_size;
+    }
+
     memcpy(new_memory, old_memory, old_size);
     return new_memory;
 }
