@@ -12,50 +12,75 @@
 #include <GLFW/glfw3.h>
 
 #include "./geo.h"
+#include "./sv.h"
+
+#define MEMORY_CAPACITY (1 * 1000 * 1000)
+char memory[MEMORY_CAPACITY] = {0};
+size_t memory_size = 0;
+
+void *memory_malloc(size_t size)
+{
+    if (memory_size + size >= MEMORY_CAPACITY) {
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    void *result = memory + memory_size;
+    memory_size += size;
+    return result;
+}
+
+void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
+{
+    void *new_memory = memory_malloc(new_size);
+    memcpy(new_memory, old_memory, old_size);
+    return new_memory;
+}
+
+#define STBI_MALLOC(size) memory_malloc(size)
+#define STBI_FREE(ignored) do {(void)ignored;} while(0)
+#define STBI_REALLOC_SIZED(ptr,oldsz,newsz) memory_realloc(ptr,oldsz,newsz)
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 
 #define MANUAL_TIME_STEP 0.05f
+#define HOT_RELOAD_ERROR_COLOR 1.0f, 0.0f, 0.0f, 1.0f
+#define BACKGROUND_COLOR 0.0f, 0.0f, 0.0f, 0.0f
 
-void panic_errno(const char *fmt, ...)
+char *cstr_from_sv(String_View sv)
 {
-    fprintf(stderr, "ERROR: ");
-
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-
-    fprintf(stderr, ": %s\n", strerror(errno));
-
-    exit(1);
+    char *result = memory_malloc(sv.count + 1);
+    memcpy(result, sv.data, sv.count);
+    result[sv.count] = '\0';
+    return result;
 }
 
 char *slurp_file(const char *file_path)
 {
-#define SLURP_FILE_PANIC panic_errno("Could not read file `%s`", file_path)
-    FILE *f = fopen(file_path, "r");
-    if (f == NULL) SLURP_FILE_PANIC;
-    if (fseek(f, 0, SEEK_END) < 0) SLURP_FILE_PANIC;
+    FILE *f = NULL;
+    char *buffer = NULL;
+
+    f = fopen(file_path, "r");
+    if (f == NULL) goto end;
+    if (fseek(f, 0, SEEK_END) < 0) goto end;
 
     long size = ftell(f);
-    if (size < 0) SLURP_FILE_PANIC;
+    if (size < 0) goto end;
 
-    char *buffer = malloc(size + 1);
-    if (buffer == NULL) SLURP_FILE_PANIC;
+    buffer = memory_malloc(size + 1);
+    if (buffer == NULL) goto end;
 
-    if (fseek(f, 0, SEEK_SET) < 0) SLURP_FILE_PANIC;
+    if (fseek(f, 0, SEEK_SET) < 0) goto end;
 
     fread(buffer, 1, size, f);
-    if (ferror(f) < 0) SLURP_FILE_PANIC;
+    if (ferror(f) < 0) goto end;
 
     buffer[size] = '\0';
 
-    if (fclose(f) < 0) SLURP_FILE_PANIC;
-
+end:
+    if (f) fclose(f);
     return buffer;
-#undef SLURP_FILE_PANIC
 }
 
 bool compile_shader_source(const GLchar *source, GLenum shader_type, GLuint *shader)
@@ -81,8 +106,13 @@ bool compile_shader_source(const GLchar *source, GLenum shader_type, GLuint *sha
 bool compile_shader_file(const char *file_path, GLenum shader_type, GLuint *shader)
 {
     char *source = slurp_file(file_path);
+    if (source == NULL) {
+        fprintf(stderr, "ERROR: could not slurp the file %s: %s\n",
+                file_path, strerror(errno));
+        return false;
+    }
+
     bool err = compile_shader_source(source, shader_type, shader);
-    free(source);
     return err;
 }
 
@@ -113,32 +143,70 @@ bool link_program(GLuint vert_shader, GLuint frag_shader, GLuint *program)
 // Global variables (fragile people with CS degree look away)
 bool program_failed = false;
 GLuint program = 0;
+
 double time = 0.0;
 GLint time_location = 0;
 bool pause = false;
 GLint resolution_location = 0;
 
+GLuint texture_id = 0;
+
 void reload_shaders(void)
 {
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    const char *scene_conf_file_path = "./scene.conf";
+    const char *vertex_shader_file_path = "./main.vert";
+    const char *fragment_shader_file_path = "./main.frag";
+    const char *texture_file_path = "yep.png";
+
+    glClearColor(BACKGROUND_COLOR);
     program_failed = false;
 
+    String_View scene_conf_content = sv_from_cstr(slurp_file(scene_conf_file_path));
+    if (scene_conf_content.data == NULL) {
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
+    }
+
+    for (size_t line_number = 0; scene_conf_content.count > 0; line_number++) {
+        String_View line = sv_chop_by_delim(&scene_conf_content, '\n');
+        line = sv_trim(sv_chop_by_delim(&line, '#'));
+
+        if (line.count > 0) {
+            String_View key = sv_trim(sv_chop_by_delim(&line, '='));
+            String_View value = sv_trim(line);
+            if (sv_eq(key, SV("frag_shader"))) {
+                fragment_shader_file_path = cstr_from_sv(value);
+            } else if (sv_eq(key, SV("vert_shader"))) {
+                vertex_shader_file_path = cstr_from_sv(value);
+            } else if (sv_eq(key, SV("texture"))) {
+                texture_file_path = cstr_from_sv(value);
+            } else {
+                printf("%s:%zu: WARNING: unknown key `"SV_Fmt"`\n",
+                       scene_conf_file_path, line_number,
+                       SV_Arg(key));
+            }
+        }
+    }
+
+    glDeleteProgram(program);
+
     GLuint vert = 0;
-    if (!compile_shader_file("./main.vert", GL_VERTEX_SHADER, &vert)) {
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    if (!compile_shader_file(vertex_shader_file_path, GL_VERTEX_SHADER, &vert)) {
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
         program_failed = true;
         return;
     }
 
     GLuint frag = 0;
-    if (!compile_shader_file("./main.frag", GL_FRAGMENT_SHADER, &frag)) {
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    if (!compile_shader_file(fragment_shader_file_path, GL_FRAGMENT_SHADER, &frag)) {
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
         program_failed = true;
         return;
     }
 
     if (!link_program(vert, frag, &program)) {
-        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
         program_failed = true;
         return;
     }
@@ -147,7 +215,40 @@ void reload_shaders(void)
     time_location = glGetUniformLocation(program, "time");
     resolution_location = glGetUniformLocation(program, "resolution");
 
-    printf("Successfully Reload the Shaders\n");
+    glDeleteTextures(1, &texture_id);
+
+    int w, h;
+    uint32_t *pixels = (uint32_t*) stbi_load(texture_file_path, &w, &h, NULL, 4);
+    if (pixels == NULL) {
+        printf("ERROR: could not load file %s: %s\n", texture_file_path, strerror(errno));
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
+    }
+
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_RGBA,
+                 w,
+                 h,
+                 0,
+                 GL_RGBA,
+                 GL_UNSIGNED_BYTE,
+                 pixels);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    printf("Successfully reloaded Shaders and Textures\n");
+    printf("Memory %zu/%zu\n", memory_size, (size_t) MEMORY_CAPACITY);
+    memory_size = 0;
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -244,40 +345,6 @@ int main()
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // TODO: Hot reloadable texture
-#define TEXTURE_FILE_PATH "pog.png"
-// #define TEXTURE_FILE_PATH "tsodinFlushed.png"
-// #define TEXTURE_FILE_PATH "yep.png"
-    int w, h;
-    uint32_t *pixels = (uint32_t*) stbi_load(TEXTURE_FILE_PATH, &w, &h, NULL, 4);
-    if (pixels == NULL) {
-        fprintf(stderr, "ERROR: could not load file `"TEXTURE_FILE_PATH"`: %s\n",
-                strerror(errno));
-        exit(1);
-    }
-#undef TEXTURE_FILE_PATH
-
-    GLuint texture_id = 0;
-    glGenTextures(1, &texture_id);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glTexImage2D(GL_TEXTURE_2D,
-                 0,
-                 GL_RGBA,
-                 w,
-                 h,
-                 0,
-                 GL_RGBA,
-                 GL_UNSIGNED_BYTE,
-                 pixels);
-    glGenerateMipmap(GL_TEXTURE_2D);
 
     reload_shaders();
 
