@@ -16,9 +16,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 
-// TODO: resizable screen
-#define SCREEN_WIDTH 1024
-#define SCREEN_HEIGHT 768
 #define MANUAL_TIME_STEP 0.05f
 
 void panic_errno(const char *fmt, ...)
@@ -180,11 +177,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
     (void) window;
-    glViewport(
-        width / 2 - SCREEN_WIDTH / 2,
-        height / 2 - SCREEN_HEIGHT / 2,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT);
+    glViewport(0, 0, width, height);
 }
 
 GLuint array_buffer_from_data(void *data, size_t data_size)
@@ -225,8 +218,8 @@ int main()
 
     GLFWwindow * const window =
         glfwCreateWindow(
-            SCREEN_WIDTH,
-            SCREEN_HEIGHT,
+            800,
+            600,
             "atomato",
             NULL,
             NULL);
@@ -349,8 +342,10 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (!program_failed) {
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            glUniform2f(resolution_location, width, height);
             glUniform1f(time_location, time);
-            glUniform2f(resolution_location, SCREEN_WIDTH, SCREEN_HEIGHT);
             glDrawArrays(GL_TRIANGLES, 0, TRIS_PER_CUBE * TRI_VERTICES);
         }
 
