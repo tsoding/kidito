@@ -16,6 +16,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 
+// TODO: resizable screen
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 768
 #define MANUAL_TIME_STEP 0.05f
@@ -251,6 +252,7 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    // TODO: Hot reloadable texture
 #define TEXTURE_FILE_PATH "pog.png"
 // #define TEXTURE_FILE_PATH "tsodinFlushed.png"
 // #define TEXTURE_FILE_PATH "yep.png"
@@ -261,6 +263,7 @@ int main()
                 strerror(errno));
         exit(1);
     }
+#undef TEXTURE_FILE_PATH
 
     GLuint texture_id = 0;
     glGenTextures(1, &texture_id);
@@ -285,6 +288,7 @@ int main()
 
     reload_shaders();
 
+    // TODO: hot reloadable mesh from an .obj file
     V4 cube_mesh[TRIS_PER_CUBE][TRI_VERTICES] = {0};
     RGBA cube_colors[TRIS_PER_CUBE][TRI_VERTICES] = {0};
     V2 cube_uvs[TRIS_PER_CUBE][TRI_VERTICES] = {0};
@@ -342,7 +346,6 @@ int main()
     glfwSetFramebufferSizeCallback(window, window_size_callback);
     double prev_time = 0.0;
     while (!glfwWindowShouldClose(window)) {
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         if (!program_failed) {
