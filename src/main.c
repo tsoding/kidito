@@ -162,7 +162,7 @@ GLuint texture_id = 0;
 #define VERTEX_ATTR_UV 1
 GLuint buffer_ids[VERTEX_ATTR_COUNT];
 
-void reload_shaders(void)
+void reload_scene(void)
 {
     const char *const scene_conf_file_path = "./scene.conf";
     const char *vertex_shader_file_path = NULL;
@@ -403,7 +403,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
     if (action == GLFW_PRESS) {
         if (key == GLFW_KEY_F5) {
-            reload_shaders();
+            reload_scene();
         } else if (key == GLFW_KEY_SPACE) {
             pause = !pause;
         }
@@ -477,7 +477,7 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    reload_shaders();
+    reload_scene();
 
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
