@@ -1,6 +1,5 @@
 main
 Dependencies
 *.exe
-*.obj
 kidito
 cube
