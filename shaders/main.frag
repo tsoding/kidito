@@ -6,7 +6,6 @@ uniform sampler2D pog;
 uniform float time;
 
 in vec2 uv;
-in vec4 color;
 in vec4 vertex;
 out vec4 frag_color;
 

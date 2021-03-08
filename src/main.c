@@ -44,8 +44,14 @@ void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
 
+#define VERTEX_CAPACITY 1000
+
+V4 vertex_positions[VERTEX_CAPACITY];
+V2 vertex_uvs[VERTEX_CAPACITY];
+size_t vertex_size = 0;
+
 #define MANUAL_TIME_STEP 0.05f
-#define HOT_RELOAD_ERROR_COLOR 1.0f, 0.0f, 0.0f, 1.0f
+#define HOT_RELOAD_ERROR_COLOR 0.25f, 0.0f, 0.0f, 1.0f
 #define BACKGROUND_COLOR 0.0f, 0.0f, 0.0f, 0.0f
 
 char *cstr_from_sv(String_View sv)
@@ -151,12 +157,18 @@ GLint resolution_location = 0;
 
 GLuint texture_id = 0;
 
+#define VERTEX_ATTR_COUNT 2
+#define VERTEX_ATTR_POSITION 0
+#define VERTEX_ATTR_UV 1
+GLuint buffer_ids[VERTEX_ATTR_COUNT];
+
 void reload_shaders(void)
 {
-    const char *scene_conf_file_path = "./scene.conf";
-    const char *vertex_shader_file_path = "./main.vert";
-    const char *fragment_shader_file_path = "./main.frag";
-    const char *texture_file_path = "yep.png";
+    const char *const scene_conf_file_path = "./scene.conf";
+    const char *vertex_shader_file_path = NULL;
+    const char *fragment_shader_file_path = NULL;
+    const char *texture_file_path = NULL;
+    const char *mesh_file_path = NULL;
 
     glClearColor(BACKGROUND_COLOR);
     program_failed = false;
@@ -181,12 +193,46 @@ void reload_shaders(void)
                 vertex_shader_file_path = cstr_from_sv(value);
             } else if (sv_eq(key, SV("texture"))) {
                 texture_file_path = cstr_from_sv(value);
+            } else if (sv_eq(key, SV("mesh"))) {
+                mesh_file_path = cstr_from_sv(value);
             } else {
                 printf("%s:%zu: WARNING: unknown key `"SV_Fmt"`\n",
                        scene_conf_file_path, line_number,
                        SV_Arg(key));
             }
         }
+    }
+
+    if (vertex_shader_file_path == NULL) {
+        fprintf(stderr, "WARNING: `vert_shader` is not specified in %s\n",
+                scene_conf_file_path);
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
+    }
+
+    if (fragment_shader_file_path == NULL) {
+        fprintf(stderr, "WARNING: `frag_shader` is not specified in %s\n",
+                scene_conf_file_path);
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
+    }
+
+    if (texture_file_path == NULL) {
+        fprintf(stderr, "WARNING: `texture` is not specified in %s\n",
+                scene_conf_file_path);
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
+    }
+
+    if (mesh_file_path == NULL) {
+        fprintf(stderr, "WARNING: `mesh` is not specified in %s\n",
+                scene_conf_file_path);
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
     }
 
     glDeleteProgram(program);
@@ -246,8 +292,105 @@ void reload_shaders(void)
                  pixels);
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    printf("Successfully reloaded Shaders and Textures\n");
-    printf("Memory %zu/%zu\n", memory_size, (size_t) MEMORY_CAPACITY);
+    // Reload mesh
+    glDeleteBuffers(VERTEX_ATTR_COUNT, buffer_ids);
+
+    String_View mesh_content = sv_from_cstr(slurp_file(mesh_file_path));
+    if (mesh_content.data == NULL) {
+        fprintf(stderr, "WARNING: could not read file `%s`: %s\n",
+                mesh_file_path, strerror(errno));
+        glClearColor(HOT_RELOAD_ERROR_COLOR);
+        program_failed = true;
+        return;
+    }
+
+    size_t positions_count = 0;
+    size_t uvs_count = 0;
+    for (size_t line_number = 0; mesh_content.count > 0; ++line_number) {
+        String_View line = sv_trim(sv_chop_by_delim(&mesh_content, '\n'));
+        line = sv_trim(sv_chop_by_delim(&line, '#'));
+
+        if (line.count > 0) {
+            String_View kind = sv_trim(sv_chop_by_delim(&line, ' '));
+
+            if (sv_eq(kind, SV("v"))) {
+                memset(&vertex_positions[positions_count],
+                       0,
+                       sizeof(vertex_positions[positions_count]));
+                for (size_t i = 0; i < V4_COMPS && line.count > 0; ++i) {
+                    String_View comp_sv = sv_trim(sv_chop_by_delim(&line, ' '));
+                    if (comp_sv.count > 0) {
+                        char *comp_cstr = cstr_from_sv(comp_sv);
+                        vertex_positions[positions_count].cs[i] = strtof(comp_cstr, NULL);
+                    }
+                }
+                positions_count += 1;
+            } else if (sv_eq(kind, SV("vt"))) {
+                memset(&vertex_uvs[uvs_count],
+                       0,
+                       sizeof(vertex_uvs[uvs_count]));
+                for (size_t i = 0; i < V2_COMPS && line.count > 0; ++i) {
+                    String_View comp_sv = sv_trim(sv_chop_by_delim(&line, ' '));
+                    if (comp_sv.count > 0) {
+                        char *comp_cstr = cstr_from_sv(comp_sv);
+                        vertex_uvs[uvs_count].cs[i] = strtof(comp_cstr, NULL);
+                    }
+                }
+                uvs_count += 1;
+            } else {
+                fprintf(stderr, "%s:%zu: WARNING: unknown obj kind of line `"SV_Fmt"`\n",
+                        mesh_file_path, line_number, SV_Arg(kind));
+            }
+        }
+    }
+
+    vertex_size = positions_count;
+    if (vertex_size > uvs_count) {
+        vertex_size = uvs_count;
+    }
+
+    if (positions_count != uvs_count) {
+        fprintf(stderr, "%s: WARNING: the amount of positions (%zu) is not equal to the amount of uvs (%zu). We are gonna ignore this fact and just assume that there is only %zu vertices\n", mesh_file_path, positions_count, uvs_count, vertex_size);
+    }
+
+    glGenBuffers(VERTEX_ATTR_COUNT, buffer_ids);
+
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, buffer_ids[VERTEX_ATTR_POSITION]);
+        glBufferData(GL_ARRAY_BUFFER,
+                     sizeof(vertex_positions[0]) * vertex_size,
+                     vertex_positions,
+                     GL_STATIC_DRAW);
+        glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+        glVertexAttribPointer(
+            VERTEX_ATTR_POSITION,   // index
+            V4_COMPS,           // numComponents
+            GL_FLOAT,           // type
+            0,                  // normalized
+            0,                  // stride
+            0                   // offset
+        );
+    }
+
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, buffer_ids[VERTEX_ATTR_UV]);
+        glBufferData(GL_ARRAY_BUFFER,
+                     sizeof(vertex_uvs[0]) * vertex_size,
+                     vertex_uvs,
+                     GL_STATIC_DRAW);
+        glEnableVertexAttribArray(VERTEX_ATTR_UV);
+        glVertexAttribPointer(
+            VERTEX_ATTR_UV,     // index
+            V2_COMPS,           // numComponents
+            GL_FLOAT,           // type
+            0,                  // normalized
+            0,                  // stride
+            0                   // offset
+        );
+    }
+
+    printf("Successfully reloaded scene\n");
+    printf("Memory %zu/%zu bytes\n", memory_size, (size_t) MEMORY_CAPACITY);
     memory_size = 0;
 }
 
@@ -279,18 +422,6 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 {
     (void) window;
     glViewport(0, 0, width, height);
-}
-
-GLuint array_buffer_from_data(void *data, size_t data_size)
-{
-    GLuint buffer_id;
-    glGenBuffers(1, &buffer_id);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer_id);
-    glBufferData(GL_ARRAY_BUFFER,
-                 data_size,
-                 data,
-                 GL_STATIC_DRAW);
-    return buffer_id;
 }
 
 void MessageCallback(GLenum source,
@@ -348,60 +479,6 @@ int main()
 
     reload_shaders();
 
-    // TODO: hot reloadable mesh from an .obj file
-    V4 cube_mesh[TRIS_PER_CUBE][TRI_VERTICES] = {0};
-    RGBA cube_colors[TRIS_PER_CUBE][TRI_VERTICES] = {0};
-    V2 cube_uvs[TRIS_PER_CUBE][TRI_VERTICES] = {0};
-    generate_cube_mesh(cube_mesh, cube_colors, cube_uvs);
-
-    {
-        array_buffer_from_data(cube_mesh, sizeof(cube_mesh));
-
-        const GLint position = 1;
-        glEnableVertexAttribArray(position);
-
-        glVertexAttribPointer(
-            position,           // index
-            V4_COMPS,           // numComponents
-            GL_FLOAT,           // type
-            0,                  // normalized
-            0,                  // stride
-            0                   // offset
-        );
-    }
-
-    {
-        array_buffer_from_data(cube_colors, sizeof(cube_colors));
-
-        const GLint position = 2;
-        glEnableVertexAttribArray(position);
-
-        glVertexAttribPointer(
-            position,           // index
-            RGBA_COMPS,         // numComponents
-            GL_FLOAT,           // type
-            0,                  // normalized
-            0,                  // stride
-            0                   // offset
-        );
-    }
-
-    {
-        array_buffer_from_data(cube_uvs, sizeof(cube_uvs));
-
-        const GLint position = 3;
-        glEnableVertexAttribArray(position);
-
-        glVertexAttribPointer(
-            position,           // index
-            V2_COMPS,           // numComponents
-            GL_FLOAT,           // type
-            0,                  // normalized
-            0,                  // stride
-            0                   // offset
-        );
-    }
-
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
     double prev_time = 0.0;
@@ -413,7 +490,7 @@ int main()
             glfwGetFramebufferSize(window, &width, &height);
             glUniform2f(resolution_location, width, height);
             glUniform1f(time_location, time);
-            glDrawArrays(GL_TRIANGLES, 0, TRIS_PER_CUBE * TRI_VERTICES);
+            glDrawArrays(GL_TRIANGLES, 0, vertex_size);
         }
 
         glfwSwapBuffers(window);

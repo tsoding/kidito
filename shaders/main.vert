@@ -5,12 +5,10 @@ precision mediump float;
 uniform float time;
 uniform vec2 resolution;
 
-layout(location = 1) in vec4 vertex_position;
-layout(location = 2) in vec4 vertex_color;
-layout(location = 3) in vec2 vertex_uv;
+layout(location = 0) in vec4 vertex_position;
+layout(location = 1) in vec2 vertex_uv;
 
 out vec2 uv;
-out vec4 color;
 out vec4 vertex;
 
 mat4 mat4_translate(vec3 dir)
@@ -76,7 +74,6 @@ void main(void)
         vertex_position
     );
 
-    color = vertex_color;
     uv = vertex_uv;
     vertex = (
         mat4_translate(vec3(0.0, 0.0, -30.0 + 30.0 * sin(time))) *
