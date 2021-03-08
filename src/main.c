@@ -30,6 +30,7 @@ void *memory_malloc(size_t size)
     return result;
 }
 
+// TODO: memory_realloc does not handle old_size > new_size
 void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
 {
     void *new_memory = memory_malloc(new_size);
@@ -109,19 +110,6 @@ bool compile_shader_source(const GLchar *source, GLenum shader_type, GLuint *sha
     return true;
 }
 
-bool compile_shader_file(const char *file_path, GLenum shader_type, GLuint *shader)
-{
-    char *source = slurp_file(file_path);
-    if (source == NULL) {
-        fprintf(stderr, "ERROR: could not slurp the file %s: %s\n",
-                file_path, strerror(errno));
-        return false;
-    }
-
-    bool err = compile_shader_source(source, shader_type, shader);
-    return err;
-}
-
 bool link_program(GLuint vert_shader, GLuint frag_shader, GLuint *program)
 {
     *program = glCreateProgram();
@@ -166,9 +154,13 @@ void reload_scene(void)
 {
     const char *const scene_conf_file_path = "./scene.conf";
     const char *vertex_shader_file_path = NULL;
+    size_t vertex_shader_def_line = 0;
     const char *fragment_shader_file_path = NULL;
+    size_t fragment_shader_def_line = 0;
     const char *texture_file_path = NULL;
+    size_t texture_def_line = 0;
     const char *mesh_file_path = NULL;
+    size_t mesh_def_line = 0;
 
     glClearColor(HOT_RELOAD_ERROR_COLOR);
     program_failed = true;
@@ -189,12 +181,16 @@ void reload_scene(void)
                 String_View value = sv_trim(line);
                 if (sv_eq(key, SV("frag_shader"))) {
                     fragment_shader_file_path = cstr_from_sv(value);
+                    fragment_shader_def_line = line_number;
                 } else if (sv_eq(key, SV("vert_shader"))) {
                     vertex_shader_file_path = cstr_from_sv(value);
+                    vertex_shader_def_line = line_number;
                 } else if (sv_eq(key, SV("texture"))) {
                     texture_file_path = cstr_from_sv(value);
+                    texture_def_line = line_number;
                 } else if (sv_eq(key, SV("mesh"))) {
                     mesh_file_path = cstr_from_sv(value);
+                    mesh_def_line = line_number;
                 } else {
                     printf("%s:%zu: WARNING: unknown key `"SV_Fmt"`\n",
                            scene_conf_file_path, line_number,
@@ -234,17 +230,36 @@ void reload_scene(void)
     {
         glDeleteProgram(program);
 
+        char *vert_source = slurp_file(vertex_shader_file_path);
+        if (vert_source == NULL) {
+            fprintf(stderr, "%s:%zu: ERROR: Could not read file `%s`: %s\n",
+                    scene_conf_file_path, vertex_shader_def_line, vertex_shader_file_path, strerror(errno));
+            return;
+        }
+
         GLuint vert = 0;
-        if (!compile_shader_file(vertex_shader_file_path, GL_VERTEX_SHADER, &vert)) {
+        if (!compile_shader_source(vert_source, GL_VERTEX_SHADER, &vert)) {
+            fprintf(stderr, "%s:%zu: ERROR: Failed to compile vertex shader `%s`\n",
+                    scene_conf_file_path, vertex_shader_def_line, vertex_shader_file_path);
+            return;
+        }
+
+        char *frag_source = slurp_file(fragment_shader_file_path);
+        if (frag_source == NULL) {
+            fprintf(stderr, "%s:%zu: ERROR: Could not read file `%s`: %s\n",
+                    scene_conf_file_path, fragment_shader_def_line, fragment_shader_file_path, strerror(errno));
             return;
         }
 
         GLuint frag = 0;
-        if (!compile_shader_file(fragment_shader_file_path, GL_FRAGMENT_SHADER, &frag)) {
+        if (!compile_shader_source(frag_source, GL_FRAGMENT_SHADER, &frag)) {
+            fprintf(stderr, "%s:%zu: ERROR: Failed to compile fragment shader `%s`\n",
+                    scene_conf_file_path, fragment_shader_def_line, fragment_shader_file_path);
             return;
         }
 
         if (!link_program(vert, frag, &program)) {
+            fprintf(stderr, "ERROR: failed to link shader program\n");
             return;
         }
 
@@ -261,7 +276,8 @@ void reload_scene(void)
         int w, h;
         uint32_t *pixels = (uint32_t*) stbi_load(texture_file_path, &w, &h, NULL, 4);
         if (pixels == NULL) {
-            printf("ERROR: could not load file %s: %s\n", texture_file_path, strerror(errno));
+            fprintf(stderr, "%s:%zu: ERROR: could not load file %s: %s\n",
+                    scene_conf_file_path, texture_def_line, texture_file_path, strerror(errno));
             return;
         }
 
@@ -293,8 +309,8 @@ void reload_scene(void)
 
         String_View mesh_content = sv_from_cstr(slurp_file(mesh_file_path));
         if (mesh_content.data == NULL) {
-            fprintf(stderr, "ERROR: could not read file `%s`: %s\n",
-                    mesh_file_path, strerror(errno));
+            fprintf(stderr, "%s:%zu: ERROR: could not read file `%s`: %s\n",
+                    scene_conf_file_path, mesh_def_line, mesh_file_path, strerror(errno));
             return;
         }
 
