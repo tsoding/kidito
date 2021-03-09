@@ -51,10 +51,6 @@ void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
 
 #define VERTEX_CAPACITY 1000
 
-V4 vertex_positions[VERTEX_CAPACITY];
-V2 vertex_uvs[VERTEX_CAPACITY];
-size_t vertex_size = 0;
-
 #define MANUAL_TIME_STEP 0.05f
 #define HOT_RELOAD_ERROR_COLOR 0.5f, 0.0f, 0.0f, 1.0f
 #define BACKGROUND_COLOR 0.0f, 0.0f, 0.0f, 0.0f
@@ -149,11 +145,6 @@ GLint resolution_location = 0;
 
 GLuint texture_id = 0;
 
-#define VERTEX_ATTR_COUNT 2
-#define VERTEX_ATTR_POSITION 0
-#define VERTEX_ATTR_UV 1
-GLuint buffer_ids[VERTEX_ATTR_COUNT];
-
 void reload_scene(void)
 {
     const char *const scene_conf_file_path = "./scene.conf";
@@ -163,8 +154,6 @@ void reload_scene(void)
     size_t fragment_shader_def_line = 0;
     const char *texture_file_path = NULL;
     size_t texture_def_line = 0;
-    const char *mesh_file_path = NULL;
-    size_t mesh_def_line = 0;
 
     glClearColor(HOT_RELOAD_ERROR_COLOR);
     program_failed = true;
@@ -192,9 +181,6 @@ void reload_scene(void)
                 } else if (sv_eq(key, SV("texture"))) {
                     texture_file_path = cstr_from_sv(value);
                     texture_def_line = line_number;
-                } else if (sv_eq(key, SV("mesh"))) {
-                    mesh_file_path = cstr_from_sv(value);
-                    mesh_def_line = line_number;
                 } else {
                     printf("%s:%zu: WARNING: unknown key `"SV_Fmt"`\n",
                            scene_conf_file_path, line_number,
@@ -220,13 +206,6 @@ void reload_scene(void)
                     scene_conf_file_path);
             return;
         }
-
-        if (mesh_file_path == NULL) {
-            fprintf(stderr, "ERROR: `mesh` is not specified in %s\n",
-                    scene_conf_file_path);
-            return;
-        }
-
     }
     // reload scene.conf end
 
@@ -306,104 +285,6 @@ void reload_scene(void)
         glGenerateMipmap(GL_TEXTURE_2D);
     }
     // reload texture end
-
-    // reload model begin
-    {
-        glDeleteBuffers(VERTEX_ATTR_COUNT, buffer_ids);
-
-        String_View mesh_content = sv_from_cstr(slurp_file(mesh_file_path));
-        if (mesh_content.data == NULL) {
-            fprintf(stderr, "%s:%zu: ERROR: could not read file `%s`: %s\n",
-                    scene_conf_file_path, mesh_def_line, mesh_file_path, strerror(errno));
-            return;
-        }
-
-        size_t positions_count = 0;
-        size_t uvs_count = 0;
-        for (size_t line_number = 0; mesh_content.count > 0; ++line_number) {
-            String_View line = sv_trim(sv_chop_by_delim(&mesh_content, '\n'));
-            line = sv_trim(sv_chop_by_delim(&line, '#'));
-
-            if (line.count > 0) {
-                String_View kind = sv_trim(sv_chop_by_delim(&line, ' '));
-
-                if (sv_eq(kind, SV("v"))) {
-                    memset(&vertex_positions[positions_count],
-                           0,
-                           sizeof(vertex_positions[positions_count]));
-                    for (size_t i = 0; i < V4_COMPS && line.count > 0; ++i) {
-                        String_View comp_sv = sv_trim(sv_chop_by_delim(&line, ' '));
-                        if (comp_sv.count > 0) {
-                            char *comp_cstr = cstr_from_sv(comp_sv);
-                            vertex_positions[positions_count].cs[i] = strtof(comp_cstr, NULL);
-                        }
-                    }
-                    positions_count += 1;
-                } else if (sv_eq(kind, SV("vt"))) {
-                    memset(&vertex_uvs[uvs_count],
-                           0,
-                           sizeof(vertex_uvs[uvs_count]));
-                    for (size_t i = 0; i < V2_COMPS && line.count > 0; ++i) {
-                        String_View comp_sv = sv_trim(sv_chop_by_delim(&line, ' '));
-                        if (comp_sv.count > 0) {
-                            char *comp_cstr = cstr_from_sv(comp_sv);
-                            vertex_uvs[uvs_count].cs[i] = strtof(comp_cstr, NULL);
-                        }
-                    }
-                    uvs_count += 1;
-                } else {
-                    fprintf(stderr, "%s:%zu: WARNING: unknown obj kind of line `"SV_Fmt"`\n",
-                            mesh_file_path, line_number, SV_Arg(kind));
-                }
-            }
-        }
-
-        vertex_size = positions_count;
-        if (vertex_size > uvs_count) {
-            vertex_size = uvs_count;
-        }
-
-        if (positions_count != uvs_count) {
-            fprintf(stderr, "%s: WARNING: the amount of positions (%zu) is not equal to the amount of uvs (%zu). We are gonna ignore this fact and just assume that there is only %zu vertices\n", mesh_file_path, positions_count, uvs_count, vertex_size);
-        }
-
-        glGenBuffers(VERTEX_ATTR_COUNT, buffer_ids);
-
-        {
-            glBindBuffer(GL_ARRAY_BUFFER, buffer_ids[VERTEX_ATTR_POSITION]);
-            glBufferData(GL_ARRAY_BUFFER,
-                         sizeof(vertex_positions[0]) * vertex_size,
-                         vertex_positions,
-                         GL_STATIC_DRAW);
-            glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-            glVertexAttribPointer(
-                VERTEX_ATTR_POSITION,   // index
-                V4_COMPS,           // numComponents
-                GL_FLOAT,           // type
-                0,                  // normalized
-                0,                  // stride
-                0                   // offset
-            );
-        }
-
-        {
-            glBindBuffer(GL_ARRAY_BUFFER, buffer_ids[VERTEX_ATTR_UV]);
-            glBufferData(GL_ARRAY_BUFFER,
-                         sizeof(vertex_uvs[0]) * vertex_size,
-                         vertex_uvs,
-                         GL_STATIC_DRAW);
-            glEnableVertexAttribArray(VERTEX_ATTR_UV);
-            glVertexAttribPointer(
-                VERTEX_ATTR_UV,     // index
-                V2_COMPS,           // numComponents
-                GL_FLOAT,           // type
-                0,                  // normalized
-                0,                  // stride
-                0                   // offset
-            );
-        }
-    }
-    // reload model end
 
     glClearColor(BACKGROUND_COLOR);
     program_failed = false;
@@ -498,6 +379,49 @@ int main()
 
     reload_scene();
 
+
+    V4 mesh[TRIS_PER_CUBE][TRI_VERTICES] = {0};
+    RGBA colors[TRIS_PER_CUBE][TRI_VERTICES] = {0};
+    V2 uvs[TRIS_PER_CUBE][TRI_VERTICES] = {0};
+
+    generate_cube_mesh(mesh, colors, uvs);
+
+    {
+        GLuint position_buffer_id;
+        glGenBuffers(1, &position_buffer_id);
+        glBindBuffer(GL_ARRAY_BUFFER, position_buffer_id);
+        glBufferData(GL_ARRAY_BUFFER,
+                     sizeof(mesh),
+                     mesh,
+                     GL_STATIC_DRAW);
+        GLuint position_index = 0;
+        glEnableVertexAttribArray(position_index);
+        glVertexAttribPointer(position_index,
+                              V4_COMPS,
+                              GL_FLOAT,
+                              GL_FALSE,
+                              0,
+                              NULL);
+    }
+
+    {
+        GLuint uv_buffer_id;
+        glGenBuffers(1, &uv_buffer_id);
+        glBindBuffer(GL_ARRAY_BUFFER, uv_buffer_id);
+        glBufferData(GL_ARRAY_BUFFER,
+                     sizeof(uvs),
+                     uvs,
+                     GL_STATIC_DRAW);
+        GLuint uv_index = 1;
+        glEnableVertexAttribArray(uv_index);
+        glVertexAttribPointer(uv_index,
+                              V2_COMPS,
+                              GL_FLOAT,
+                              GL_FALSE,
+                              0,
+                              NULL);
+    }
+
     glfwSetKeyCallback(window, key_callback);
     glfwSetFramebufferSizeCallback(window, window_size_callback);
     double prev_time = 0.0;
@@ -509,7 +433,7 @@ int main()
             glfwGetFramebufferSize(window, &width, &height);
             glUniform2f(resolution_location, width, height);
             glUniform1f(time_location, time);
-            glDrawArrays(GL_TRIANGLES, 0, vertex_size);
+            glDrawArrays(GL_TRIANGLES, 0, TRIS_PER_CUBE * TRI_VERTICES);
         }
 
         glfwSwapBuffers(window);
