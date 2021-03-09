@@ -13,38 +13,14 @@
 
 #include "./geo.h"
 #include "./sv.h"
+#include "./region.h"
 
-#define MEMORY_CAPACITY (1 * 1000 * 1000)
-char memory[MEMORY_CAPACITY] = {0};
-size_t memory_size = 0;
+Region hot_reload_memory;
 
-void *memory_malloc(size_t size)
-{
-    if (memory_size + size >= MEMORY_CAPACITY) {
-        errno = ENOMEM;
-        return NULL;
-    }
-
-    void *result = memory + memory_size;
-    memory_size += size;
-    return result;
-}
-
-void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
-{
-    void *new_memory = memory_malloc(new_size);
-
-    if (old_size > new_size) {
-        old_size = new_size;
-    }
-
-    memcpy(new_memory, old_memory, old_size);
-    return new_memory;
-}
-
-#define STBI_MALLOC(size) memory_malloc(size)
+#define STBI_MALLOC(size) region_malloc(&hot_reload_memory, size)
 #define STBI_FREE(ignored) do {(void)ignored;} while(0)
-#define STBI_REALLOC_SIZED(ptr,oldsz,newsz) memory_realloc(ptr,oldsz,newsz)
+#define STBI_REALLOC_SIZED(ptr, oldsz, newsz) \
+    region_realloc(&hot_reload_memory, ptr, oldsz, newsz)
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
@@ -54,41 +30,6 @@ void *memory_realloc(void *old_memory, size_t old_size, size_t new_size)
 #define MANUAL_TIME_STEP 0.05f
 #define HOT_RELOAD_ERROR_COLOR 0.5f, 0.0f, 0.0f, 1.0f
 #define BACKGROUND_COLOR 0.0f, 0.0f, 0.0f, 0.0f
-
-char *cstr_from_sv(String_View sv)
-{
-    char *result = memory_malloc(sv.count + 1);
-    memcpy(result, sv.data, sv.count);
-    result[sv.count] = '\0';
-    return result;
-}
-
-char *slurp_file(const char *file_path)
-{
-    FILE *f = NULL;
-    char *buffer = NULL;
-
-    f = fopen(file_path, "r");
-    if (f == NULL) goto end;
-    if (fseek(f, 0, SEEK_END) < 0) goto end;
-
-    long size = ftell(f);
-    if (size < 0) goto end;
-
-    buffer = memory_malloc(size + 1);
-    if (buffer == NULL) goto end;
-
-    if (fseek(f, 0, SEEK_SET) < 0) goto end;
-
-    fread(buffer, 1, size, f);
-    if (ferror(f) < 0) goto end;
-
-    buffer[size] = '\0';
-
-end:
-    if (f) fclose(f);
-    return buffer;
-}
 
 bool compile_shader_source(const GLchar *source, GLenum shader_type, GLuint *shader)
 {
@@ -160,7 +101,7 @@ void reload_scene(void)
 
     // reload scene.conf begin
     {
-        String_View scene_conf_content = sv_from_cstr(slurp_file(scene_conf_file_path));
+        String_View scene_conf_content = sv_from_cstr(region_slurp_file(&hot_reload_memory, scene_conf_file_path));
         if (scene_conf_content.data == NULL) {
             return;
         }
@@ -173,13 +114,13 @@ void reload_scene(void)
                 String_View key = sv_trim(sv_chop_by_delim(&line, '='));
                 String_View value = sv_trim(line);
                 if (sv_eq(key, SV("frag_shader"))) {
-                    fragment_shader_file_path = cstr_from_sv(value);
+                    fragment_shader_file_path = region_cstr_from_sv(&hot_reload_memory, value);
                     fragment_shader_def_line = line_number;
                 } else if (sv_eq(key, SV("vert_shader"))) {
-                    vertex_shader_file_path = cstr_from_sv(value);
+                    vertex_shader_file_path = region_cstr_from_sv(&hot_reload_memory, value);
                     vertex_shader_def_line = line_number;
                 } else if (sv_eq(key, SV("texture"))) {
-                    texture_file_path = cstr_from_sv(value);
+                    texture_file_path = region_cstr_from_sv(&hot_reload_memory, value);
                     texture_def_line = line_number;
                 } else {
                     printf("%s:%zu: WARNING: unknown key `"SV_Fmt"`\n",
@@ -213,7 +154,7 @@ void reload_scene(void)
     {
         glDeleteProgram(program);
 
-        char *vert_source = slurp_file(vertex_shader_file_path);
+        char *vert_source = region_slurp_file(&hot_reload_memory, vertex_shader_file_path);
         if (vert_source == NULL) {
             fprintf(stderr, "%s:%zu: ERROR: Could not read file `%s`: %s\n",
                     scene_conf_file_path, vertex_shader_def_line, vertex_shader_file_path, strerror(errno));
@@ -227,7 +168,7 @@ void reload_scene(void)
             return;
         }
 
-        char *frag_source = slurp_file(fragment_shader_file_path);
+        char *frag_source = region_slurp_file(&hot_reload_memory, fragment_shader_file_path);
         if (frag_source == NULL) {
             fprintf(stderr, "%s:%zu: ERROR: Could not read file `%s`: %s\n",
                     scene_conf_file_path, fragment_shader_def_line, fragment_shader_file_path, strerror(errno));
@@ -290,8 +231,8 @@ void reload_scene(void)
     program_failed = false;
 
     printf("Successfully reloaded scene\n");
-    printf("Memory %zu/%zu bytes\n", memory_size, (size_t) MEMORY_CAPACITY);
-    memory_size = 0;
+    printf("Memory %zu/%zu bytes\n", hot_reload_memory.size, (size_t) REGION_CAPACITY);
+    region_clean(&hot_reload_memory);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -386,12 +327,6 @@ int main()
     V4 normals[TRIS_PER_CUBE][TRI_VERTICES] = {0};
 
     generate_cube_mesh(mesh, colors, uvs, normals);
-
-    for (size_t tri = 0; tri < TRIS_PER_CUBE; ++tri) {
-        for (size_t vert = 0; vert < TRI_VERTICES; ++vert) {
-            printf(V4_Fmt"\n", V4_Arg(normals[tri][vert]));
-        }
-    }
 
     {
         GLuint position_buffer_id;

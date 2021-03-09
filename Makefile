@@ -1,6 +1,6 @@
 GL_PKGS=glfw3 glew
 CFLAGS=-Wall -Wextra
-SRC=src/main.c src/geo.c src/sv.c
+SRC=src/main.c src/geo.c src/sv.c src/region.c
 
 all: kidito
 
