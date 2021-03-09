@@ -20,63 +20,66 @@ V4 v4_scale(V4 a, float s)
     return a;
 }
 
-void generate_cube_face_mesh(size_t a, size_t b,
-                             size_t c, float cv,
-                             size_t d, float dv,
-                             V4 mesh[TRIS_PER_FACE][TRI_VERTICES])
-{
-    for (size_t i = 0; i < TRIS_PER_FACE; ++i) {
-        for (size_t j = 0; j < TRI_VERTICES; ++j) {
-            size_t k = i + j;
-            mesh[i][j].cs[a] = (float) (k & 1);
-            mesh[i][j].cs[b] = (float) (k >> 1);
-            mesh[i][j].cs[c] = cv;
-            mesh[i][j].cs[d] = dv;
-        }
-    }
-}
-
 void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
                         RGBA colors[TRIS_PER_CUBE][TRI_VERTICES],
-                        V2 uvs[TRIS_PER_CUBE][TRI_VERTICES])
+                        V2 uvs[TRIS_PER_CUBE][TRI_VERTICES],
+                        V4 normals[TRIS_PER_CUBE][TRI_VERTICES])
 {
     size_t count = 0;
 
-    static const RGBA face_colors[CUBE_FACES] = {
-        RED,
-        GREEN,
-        BLUE,
-        YELLOW,
-        PURPLE,
-        CYAN
+    static const RGBA face_colors[CUBE_FACE_PAIRS][PAIR_COMPS] = {
+        {RED, GREEN},
+        {BLUE, YELLOW},
+        {PURPLE, CYAN},
     };
 
-    static const size_t face_pairs[CUBE_FACE_PAIRS][V4_COMPS] = {
-        {X, Y, Z, W},
-        {Z, Y, X, W},
-        {X, Z, Y, W}
+    static const size_t face_pairs[CUBE_FACE_PAIRS][V3_COMPS] = {
+        {X, Y, Z},
+        {Z, Y, X},
+        {X, Z, Y}
     };
 
-    for (size_t i = 0; i < CUBE_FACE_PAIRS; ++i) {
-        for (size_t j = 0; j < PAIR_COMPS; ++j) {
-            generate_cube_face_mesh(
-                face_pairs[i][0],
-                face_pairs[i][1],
-                face_pairs[i][2], (float) j,
-                face_pairs[i][3], 1.0f,
-                &mesh[count]);
+    for (size_t face_pair_index = 0; face_pair_index < CUBE_FACE_PAIRS; ++face_pair_index) {
+        for (size_t pair_comp_index = 0; pair_comp_index < PAIR_COMPS; ++pair_comp_index) {
+            for (size_t tri = 0; tri < TRIS_PER_FACE; ++tri) {
+                for (size_t vert = 0; vert < TRI_VERTICES; ++vert) {
+                    const size_t strip_index = tri + vert;
+                    const size_t A = face_pairs[face_pair_index][0];
+                    const size_t B = face_pairs[face_pair_index][1];
+                    const size_t C = face_pairs[face_pair_index][2];
 
-            for (size_t k = 0; k < TRIS_PER_FACE; ++k) {
-                for (size_t q = 0; q < TRI_VERTICES; ++q) {
-                    colors[count + k][q] = face_colors[2 * i + j];
+                    // Mesh
+                    {
 
-                    size_t t = k + q;
-                    uvs[count + k][q].cs[X] = (float) (t & 1);
-                    uvs[count + k][q].cs[Y] = (float) (t >> 1);
+                        mesh[count + tri][vert].cs[A] = (float) (strip_index & 1);
+                        mesh[count + tri][vert].cs[B] = (float) (strip_index >> 1);
+                        mesh[count + tri][vert].cs[C] = (float) pair_comp_index;;
+                        mesh[count + tri][vert].cs[W] = 1.0f;
+                    }
+
+                    // Color
+                    {
+                        colors[count + tri][vert] =
+                            face_colors[face_pair_index][pair_comp_index];
+                    }
+
+                    // UVs
+                    {
+                        uvs[count + tri][vert].cs[X] = (float) (strip_index & 1);
+                        uvs[count + tri][vert].cs[Y] = (float) (strip_index >> 1);
+                    }
+
+                    // Normals
+                    {
+                        normals[count + tri][vert].cs[A] = 0.0f;
+                        normals[count + tri][vert].cs[B] = 0.0f;
+                        normals[count + tri][vert].cs[Z] = (float) (2 * (int) pair_comp_index - 1);
+                        normals[count + tri][vert].cs[W] = 1.0f;
+                    }
                 }
             }
 
-            count += 2;
+            count += TRIS_PER_FACE;
         }
     }
 

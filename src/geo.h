@@ -46,7 +46,8 @@ void generate_cube_face_mesh(size_t a, size_t b,
                              V4 mesh[TRIS_PER_FACE][TRI_VERTICES]);
 void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
                         RGBA colors[TRIS_PER_CUBE][TRI_VERTICES],
-                        V2 uvs[TRIS_PER_CUBE][TRI_VERTICES]);
+                        V2 uvs[TRIS_PER_CUBE][TRI_VERTICES],
+                        V4 normals[TRIS_PER_CUBE][TRI_VERTICES]);
 
 typedef struct {
     float vs[V4_COMPS][V4_COMPS];

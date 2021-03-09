@@ -383,8 +383,9 @@ int main()
     V4 mesh[TRIS_PER_CUBE][TRI_VERTICES] = {0};
     RGBA colors[TRIS_PER_CUBE][TRI_VERTICES] = {0};
     V2 uvs[TRIS_PER_CUBE][TRI_VERTICES] = {0};
+    V4 normals[TRIS_PER_CUBE][TRI_VERTICES] = {0};
 
-    generate_cube_mesh(mesh, colors, uvs);
+    generate_cube_mesh(mesh, colors, uvs, normals);
 
     {
         GLuint position_buffer_id;
