@@ -352,7 +352,7 @@ int main()
         glfwCreateWindow(
             800,
             600,
-            "atomato",
+            "kidito",
             NULL,
             NULL);
     if (window == NULL) {
