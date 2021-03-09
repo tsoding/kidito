@@ -387,6 +387,12 @@ int main()
 
     generate_cube_mesh(mesh, colors, uvs, normals);
 
+    for (size_t tri = 0; tri < TRIS_PER_CUBE; ++tri) {
+        for (size_t vert = 0; vert < TRI_VERTICES; ++vert) {
+            printf(V4_Fmt"\n", V4_Arg(normals[tri][vert]));
+        }
+    }
+
     {
         GLuint position_buffer_id;
         glGenBuffers(1, &position_buffer_id);
@@ -417,6 +423,24 @@ int main()
         glEnableVertexAttribArray(uv_index);
         glVertexAttribPointer(uv_index,
                               V2_COMPS,
+                              GL_FLOAT,
+                              GL_FALSE,
+                              0,
+                              NULL);
+    }
+
+    {
+        GLuint normal_buffer_id;
+        glGenBuffers(1, &normal_buffer_id);
+        glBindBuffer(GL_ARRAY_BUFFER, normal_buffer_id);
+        glBufferData(GL_ARRAY_BUFFER,
+                     sizeof(normals),
+                     normals,
+                     GL_STATIC_DRAW);
+        GLuint normal_index = 2;
+        glEnableVertexAttribArray(normal_index);
+        glVertexAttribPointer(normal_index,
+                              V4_COMPS,
                               GL_FLOAT,
                               GL_FALSE,
                               0,

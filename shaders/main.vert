@@ -7,9 +7,11 @@ uniform vec2 resolution;
 
 layout(location = 0) in vec4 vertex_position;
 layout(location = 1) in vec2 vertex_uv;
+layout(location = 2) in vec4 vertex_normal;
 
 out vec2 uv;
 out vec4 vertex;
+out vec4 normal;
 
 mat4 mat4_translate(vec3 dir)
 {
@@ -66,22 +68,29 @@ void main(void)
 
     mat4 camera = (
         mat4_translate(vec3(0.0, 0.0, -30.0 + 30.0 * sin(time))) *
-        mat4_scale(vec3(25.0, 25.0, 25.0)) *
         mat4_rotate_z(time) *
         mat4_rotate_y(time) *
+        mat4_translate(vertex_normal.xyz * 20.0 * ((sin(time) + 1.0) / 2.0)) *
+        mat4_scale(vec3(25.0, 25.0, 25.0)) *
         mat4_translate(vec3(-0.5, -0.5, -0.5)) *
         mat4(1.0)
     );
 
-    gl_Position = (
-        mat4_perspective(fovy, aspect, 1.0, 500.0) *
+    vec4 camera_pos = (
         camera *
         vertex_position
     );
 
+    gl_Position = (
+        mat4_perspective(fovy, aspect, 1.0, 500.0) *
+        camera_pos
+    );
+
     uv = vertex_uv;
-    vertex = (
-        camera *
-        vertex_position
+    vertex = camera_pos;
+    normal = (
+        mat4_rotate_z(time) *
+        mat4_rotate_y(time) *
+        vertex_normal
     );
 }

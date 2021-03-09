@@ -29,4 +29,4 @@ $ ./kidito
 - [x] Render the cube mesh with perspective projection
 - [x] Texture the cube
 - [x] Fog
-- [ ] Simple lighting (the classical one with normals and stuff)
+- [x] Simple lighting (the classical one with normals and stuff)

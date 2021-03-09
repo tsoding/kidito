@@ -51,35 +51,34 @@ void generate_cube_mesh(V4 mesh[TRIS_PER_CUBE][TRI_VERTICES],
                     // Mesh
                     {
 
-                        mesh[count + tri][vert].cs[A] = (float) (strip_index & 1);
-                        mesh[count + tri][vert].cs[B] = (float) (strip_index >> 1);
-                        mesh[count + tri][vert].cs[C] = (float) pair_comp_index;;
-                        mesh[count + tri][vert].cs[W] = 1.0f;
+                        mesh[count][vert].cs[A] = (float) (strip_index & 1);
+                        mesh[count][vert].cs[B] = (float) (strip_index >> 1);
+                        mesh[count][vert].cs[C] = (float) pair_comp_index;;
+                        mesh[count][vert].cs[W] = 1.0f;
                     }
 
                     // Color
                     {
-                        colors[count + tri][vert] =
+                        colors[count][vert] =
                             face_colors[face_pair_index][pair_comp_index];
                     }
 
                     // UVs
                     {
-                        uvs[count + tri][vert].cs[X] = (float) (strip_index & 1);
-                        uvs[count + tri][vert].cs[Y] = (float) (strip_index >> 1);
+                        uvs[count][vert].cs[X] = (float) (strip_index & 1);
+                        uvs[count][vert].cs[Y] = (float) (strip_index >> 1);
                     }
 
                     // Normals
                     {
-                        normals[count + tri][vert].cs[A] = 0.0f;
-                        normals[count + tri][vert].cs[B] = 0.0f;
-                        normals[count + tri][vert].cs[Z] = (float) (2 * (int) pair_comp_index - 1);
-                        normals[count + tri][vert].cs[W] = 1.0f;
+                        normals[count][vert].cs[A] = 0.0f;
+                        normals[count][vert].cs[B] = 0.0f;
+                        normals[count][vert].cs[C] = (float) (2 * (int) pair_comp_index - 1);
+                        normals[count][vert].cs[W] = 1.0f;
                     }
                 }
+                count += 1;
             }
-
-            count += TRIS_PER_FACE;
         }
     }
 
